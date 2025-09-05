@@ -1,0 +1,10 @@
+apiVersion: skaffold/v4beta1
+kind: Config
+metadata:
+  name: aifrontend
+build:
+  artifacts:
+    - image: gcr.io/${PROJECT_ID}/bank-of-anthos-aifrontend
+      context: .
+      docker:
+        dockerfile: Dockerfile
