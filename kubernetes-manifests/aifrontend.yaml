@@ -1,0 +1,46 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aifrontend
+spec:
+  selector:
+    app: aifrontend
+  ports:
+    - port: 80
+      targetPort: 5000
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aifrontend
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aifrontend
+  template:
+    metadata:
+      labels:
+        app: aifrontend
+    spec:
+      containers:
+      - name: aifrontend
+        image: gcr.io/bank-of-anthos-470616/bank-of-anthos-aifrontend:latest
+        ports:
+        - containerPort: 5000
+        env:
+        - name: PORT
+          value: "5000"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 10
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 5000
+          initialDelaySeconds: 5
+          periodSeconds: 5
