@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aifrontend
+  labels:
+    application: bank-of-anthos
+    environment: development
+    team: frontend
+    tier: web
+spec:
+  selector:
+    app: aifrontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 5005
+  type: LoadBalancer
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aifrontend
+  labels:
+    application: bank-of-anthos
+    environment: development
+    team: frontend
+    tier: web
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aifrontend
+  template:
+    metadata:
+      labels:
+        app: aifrontend
+        application: bank-of-anthos
+        environment: development
+        team: frontend
+        tier: web
+    spec:
+      containers:
+        - name: aifrontend
+          image: gcr.io/bank-of-anthos-470616/aifrontend:latest
+          ports:
+            - containerPort: 5005
+          env:
+            - name: PORT
+              value: "5005"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 5005
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 5005
+            initialDelaySeconds: 5
+            periodSeconds: 5

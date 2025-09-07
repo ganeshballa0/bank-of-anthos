@@ -1,9 +1,14 @@
-# src/aifrontend/app.py
 from flask import Flask, render_template, request, session, redirect
 import requests
+import os
 
 app = Flask(__name__)
-app.secret_key = 'REPLACE_WITH_SECURE_KEY'
+app.secret_key = os.getenv("SECRET_KEY", "REPLACE_WITH_SECURE_KEY")
+
+# --- Health endpoint for Kubernetes probes ---
+@app.route('/healthz', methods=['GET'])
+def health():
+    return "ok", 200
 
 @app.route('/', methods=['GET'])
 def home():
@@ -14,10 +19,10 @@ def login():
     if request.method == 'POST':
         user = request.form.get('user')
         pw = request.form.get('password')
-        # Call the existing user-service login API
-        resp = requests.post('http://user-service:80/v1/users:signin', json={
-            'email': user, 'password': pw
-        })
+        resp = requests.post(
+            'http://user-service/v1/users:signin',
+            json={'email': user, 'password': pw}
+        )
         if resp.status_code == 200:
             token = resp.json().get('token')
             session['token'] = token
@@ -31,9 +36,16 @@ def ai():
         return redirect('/login')
     if request.method == 'POST':
         prompt = request.form.get('prompt')
-        # Call the AIruntime service (replace URL as appropriate)
         headers = {'Authorization': f"Bearer {session['token']}"}
-        ai_resp = requests.post('http://airuntime:8080/v1/ai', json={'prompt': prompt}, headers=headers)
+        ai_resp = requests.post(
+            'http://airuntime:5005/v1/ai',
+            json={'prompt': prompt},
+            headers=headers
+        )
         answer = ai_resp.json().get('response', '')
         return render_template('ai.html', prompt=prompt, answer=answer)
     return render_template('ai.html')
+
+if __name__ == "__main__":
+    port = int(os.getenv("PORT", 5005))
+    app.run(host="0.0.0.0", port=port)
