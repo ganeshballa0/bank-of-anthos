@@ -1,2 +1,5 @@
+flask
+requests
+gunicorn
 google-cloud-aiplatform
 mcp

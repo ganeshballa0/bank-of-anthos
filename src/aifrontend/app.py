@@ -1,51 +1,41 @@
-from flask import Flask, render_template, request, session, redirect
+from flask import Flask, request, session, redirect, url_for, render_template
 import requests
-import os
 
 app = Flask(__name__)
-app.secret_key = os.getenv("SECRET_KEY", "REPLACE_WITH_SECURE_KEY")
+app.secret_key = "YOUR_SECRET_KEY"  # needed for sessions
 
-# --- Health endpoint for Kubernetes probes ---
-@app.route('/healthz', methods=['GET'])
-def health():
-    return "ok", 200
-
-@app.route('/', methods=['GET'])
-def home():
-    return redirect('/login')
-
+# Login page (GET) and handler (POST)
 @app.route('/login', methods=['GET','POST'])
 def login():
     if request.method == 'POST':
-        user = request.form.get('user')
-        pw = request.form.get('password')
-        resp = requests.post(
-            'http://user-service/v1/users:signin',
-            json={'email': user, 'password': pw}
-        )
-        if resp.status_code == 200:
-            token = resp.json().get('token')
-            session['token'] = token
-            return redirect('/ai')
-        return render_template('login.html', error="Login failed")
+        username = request.form['username']
+        password = request.form['password']
+        # Call the user-service to authenticate and get JWT
+        resp = requests.get("http://userservice:5000/login",
+                            params={"username": username, "password": password})
+        data = resp.json()
+        if 'token' in data:
+            session['username'] = username
+            session['jwt'] = data['token']  # store JWT for later calls
+            return redirect(url_for('chat'))
+        else:
+            return "Login failed", 401
+    # Render login HTML form (not shown)
     return render_template('login.html')
 
+# Chat page (GET) and handler (POST)
 @app.route('/ai', methods=['GET','POST'])
-def ai():
-    if 'token' not in session:
-        return redirect('/login')
+def chat():
+    if 'jwt' not in session:
+        return redirect(url_for('login'))
     if request.method == 'POST':
-        prompt = request.form.get('prompt')
-        headers = {'Authorization': f"Bearer {session['token']}"}
-        ai_resp = requests.post(
-            'http://airuntime:5005/v1/ai',
-            json={'prompt': prompt},
-            headers=headers
-        )
-        answer = ai_resp.json().get('response', '')
-        return render_template('ai.html', prompt=prompt, answer=answer)
-    return render_template('ai.html')
-
-if __name__ == "__main__":
-    port = int(os.getenv("PORT", 5005))
-    app.run(host="0.0.0.0", port=port)
+        prompt = request.form['prompt']
+        token = session['jwt']  # retrieve stored JWT
+        # Forward the prompt and JWT to the aiservices
+        resp = requests.post("http://aiservices:8000/ask",
+                             headers={"Authorization": f"Bearer {token}"},
+                             json={"prompt": prompt})
+        answer = resp.json().get('answer', 'Error')
+        return render_template('chat.html', answer=answer, prompt=prompt)
+    # Render chat input page (not shown)
+    return render_template('chat.html')

@@ -3,5 +3,4 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
-ENV FLASK_RUN_PORT=5005
-CMD ["gunicorn", "-b", "0.0.0.0:5005", "app:app"]
+CMD ["python", "mcpserver.py"]

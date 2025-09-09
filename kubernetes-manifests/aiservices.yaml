@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: aiservices
+spec:
+  selector:
+    app: aiservices
+  type: LoadBalancer
+  ports:
+    - name: http
+      port: 80
+      targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiservices
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: aiservices
+  template:
+    metadata:
+      labels:
+        app: aiservices
+    spec:
+      containers:
+      - name: aiservices
+        image: gcr.io/bank-of-anthos-470616/aiservices:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: PROJECT_ID
+          value: "bank-of-anthos-470616"
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 8000
+          initialDelaySeconds: 5
+          periodSeconds: 10
