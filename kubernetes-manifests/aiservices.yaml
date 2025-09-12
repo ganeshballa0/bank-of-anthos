@@ -27,7 +27,8 @@ spec:
     spec:
       containers:
       - name: aiservices
-        image: gcr.io/bank-of-anthos-470616/aiservices:latest
+        image: gcr.io/bank-of-anthos-470616/aiservices
+        imagePullPolicy: Always
         ports:
         - containerPort: 8000
         env:

@@ -3,3 +3,5 @@ requests
 gunicorn
 google-cloud-aiplatform
 mcp
+fastapi
+uvicorn[standard]
