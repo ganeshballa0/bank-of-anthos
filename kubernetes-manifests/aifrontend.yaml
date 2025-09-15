@@ -2,42 +2,117 @@ apiVersion: v1
 kind: Service
 metadata:
   name: aifrontend
+  labels:
+    application: bank-of-anthos
+    environment: development
+    team: frontend
+    tier: web
 spec:
   selector:
     app: aifrontend
-  type: LoadBalancer            # exposes externally:contentReference[oaicite:15]{index=15}
+    application: bank-of-anthos
+    environment: development
+    team: frontend
+    tier: web
+  type: LoadBalancer
   ports:
     - name: http
       port: 80
-      targetPort: 5005
+      targetPort: 8080   # app listens on 8080
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: aifrontend
+  labels:
+    application: bank-of-anthos
+    environment: development
+    team: frontend
+    tier: web
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: aifrontend
+      application: bank-of-anthos
+      environment: development
+      team: frontend
+      tier: web
   template:
     metadata:
+      annotations:
+        # Harmless if you don't use Istio; helpful if sidecar injection is enabled.
+        proxy.istio.io/config: '{ "holdApplicationUntilProxyStarts": true }'
       labels:
         app: aifrontend
+        application: bank-of-anthos
+        environment: development
+        team: frontend
+        tier: web
     spec:
+      serviceAccountName: bank-of-anthos
+      terminationGracePeriodSeconds: 5
+      securityContext:
+        fsGroup: 1000
+        runAsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 1000
       containers:
-      - name: aifrontend
-        image: gcr.io/bank-of-anthos-470616/aifrontend:latest
-        ports:
-        - containerPort: 5005
-        env:
-        - name: USERSERVICE_URL
-          value: "http://userservice:5000"
-        - name: CONTACTS_URL
-          value: "http://contacts:5000"
-        readinessProbe:
-          httpGet:
-            path: /healthz
-            port: 5005
-          initialDelaySeconds: 5
-          periodSeconds: 10
+        - name: aifrontend
+          image: gcr.io/bank-of-anthos-470616/aifrontend:latest
+          ports:
+            - containerPort: 8080
+          env:
+            - name: BACKEND_TIMEOUT
+              value: "5"
+            - name: PUB_KEY_PATH
+              value: "/tmp/.ssh/publickey"
+          envFrom:
+            - configMapRef:
+                name: environment-config
+            - configMapRef:
+                name: service-api-config        # brings USERSERVICE_API_ADDR=userservice:8080
+            - configMapRef:
+                name: ai-service-api-config     # NEW: brings AISERVICES_API_ADDR=aiservices:8000
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 5
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128Mi
+            requests:
+              cpu: 100m
+              memory: 64Mi
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop: ["all"]
+            privileged: false
+            readOnlyRootFilesystem: true
+          volumeMounts:
+            - mountPath: /tmp
+              name: tmp
+            - mountPath: /tmp/.ssh
+              name: publickey
+              readOnly: true
+      volumes:
+        - name: tmp
+          emptyDir: {}
+        - name: publickey
+          secret:
+            secretName: jwt-key
+            items:
+              - key: jwtRS256.key.pub
+                path: publickey

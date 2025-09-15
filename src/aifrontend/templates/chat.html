@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+<head>
+  <title>AI Frontend - Chat</title>
+</head>
+<body>
+  <h2>Chat with AI</h2>
+
+  <form method="POST" action="/ai">
+    <label>Prompt:</label><br>
+    <textarea name="prompt" rows="4" cols="50" required></textarea>
+    <br><br>
+    <button type="submit">Ask</button>
+  </form>
+
+  {% if prompt %}
+    <h3>Your Question:</h3>
+    <p>{{ prompt }}</p>
+  {% endif %}
+
+  {% if answer %}
+    <h3>AI Answer:</h3>
+    <p>{{ answer }}</p>
+  {% endif %}
+
+  <form method="POST" action="/logout">
+    <button type="submit">Logout</button>
+  </form>
+</body>
+</html>

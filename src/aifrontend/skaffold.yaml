@@ -1,16 +1,13 @@
-apiVersion: skaffold/v4beta8
+apiVersion: skaffold/v2beta18
 kind: Config
+metadata:
+  name: aifrontend
 build:
   artifacts:
     - image: gcr.io/bank-of-anthos-470616/aifrontend
-      docker:
-        dockerfile: src/aifrontend/Dockerfile
-    - image: gcr.io/bank-of-anthos-470616/aiservices
-      docker:
-        dockerfile: src/aiservices/Dockerfile
+      context: .
 deploy:
-  kubectl: {}
-manifests:
-  rawYaml: 
-  - ../../kubernetes-manifests/aifrontend.yaml
-  - ../../kubernetes-manifests/aiservices.yaml
+  kubectl:
+    manifests:
+      - ../../kubernetes-manifests/aifrontend.yaml
+      - ../../kubernetes-manifests/ai-service-api-config.yaml
