@@ -11,8 +11,8 @@ def create_app():
     app.config["USERSERVICE_URI"] = "http://{}/login".format(
         os.environ["USERSERVICE_API_ADDR"]
     )
-    app.config["AISERVICES_URI"] = "http://{}/ask".format(
-        os.environ["AISERVICES_API_ADDR"]
+    app.config["AIRUNTIME_URI"] = "http://{}/ask".format(
+        os.environ["AIRUNTIME_API_ADDR"]
     )
     app.config["PUBLIC_KEY"] = open(os.environ["PUB_KEY_PATH"], "r").read()
     app.config["TOKEN_NAME"] = "token"
@@ -84,15 +84,15 @@ def create_app():
             prompt = request.form["prompt"]
             try:
                 resp = requests.post(
-                    app.config["AISERVICES_URI"],
+                    app.config["AIRUNTIME_URI"],
                     headers={"Authorization": f"Bearer {token}"},
-                    json={"prompt": prompt},
+                    json={"prompt": prompt, "username": "user", "token": token},
                     timeout=app.config["BACKEND_TIMEOUT"],
                 )
                 resp.raise_for_status()
                 answer = resp.json().get("answer", "Error")
             except (RequestException, HTTPError) as e:
-                return f"Error contacting AIServices: {str(e)}", 500
+                return f"Error contacting AI Runtime: {str(e)}", 500
 
             return render_template("chat.html", answer=answer, prompt=prompt)
 

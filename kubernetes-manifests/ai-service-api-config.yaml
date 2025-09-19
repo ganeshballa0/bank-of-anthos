@@ -9,12 +9,14 @@ metadata:
     team: frontend
     tier: web
 data:
-  # --- Primary AI service used by aifrontend ---
-  # host:port (scheme is added in code as "http://")
-  AISERVICES_API_ADDR: aiservices:8000
+  # --- AI runtime service ---
+  AIRUNTIME_API_ADDR: airuntime:8001
 
-  # --- (Optional) Future AI endpoints: add here as you onboard them ---
-  # AICHAT_API_ADDR: aichat:8080
-  # AIEMBEDDINGS_API_ADDR: aiembeddings:8081
-  # AIVISION_API_ADDR: aivision:8082
-  # AIVECTOR_API_ADDR: aivector:8090
+  # --- Frontend service ---
+  AIFRONTEND_API_ADDR: aifrontend:8080
+
+  # --- MCP server ---
+  MCP_SERVER_ADDR: mcpserver:8000/mcp/sse
+
+  # --- GCP project ---
+  PROJECT_ID: bank-of-anthos-470616

@@ -25,8 +25,12 @@ requires:
   - aifrontend
   path: src/aifrontend/skaffold.yaml
 - configs:
-  - aiservices
-  path: src/aiservices/skaffold.yaml   
+  - mcpserver
+  path: src/mcpserver/skaffold.yaml 
+  
+- configs:
+  - airuntime
+  path: src/airuntime/skaffold.yaml  
 
 deploy:
   tolerateFailuresUntilDeadline: true

@@ -1,0 +1,15 @@
+apiVersion: skaffold/v4beta8
+kind: Config
+metadata:
+  name: airuntime
+build:
+  artifacts:
+    - image: gcr.io/bank-of-anthos-470616/airuntime
+      context: .
+      docker:
+        dockerfile: Dockerfile
+deploy:
+  kubectl: {}
+manifests:
+  rawYaml:
+    - ../../kubernetes-manifests/airuntime.yaml
