@@ -1,10 +1,14 @@
-import os, requests, jwt
+import os
+import requests
+import jwt
+import base64
+import json
 from flask import Flask, request, redirect, url_for, render_template, make_response
 from requests.exceptions import RequestException, HTTPError
 
 def create_app():
     app = Flask(__name__)
-
+    
     # -------------------------------------------------------------------
     # Config (all from environment, no hardcoding)
     # -------------------------------------------------------------------
@@ -27,12 +31,13 @@ def create_app():
         if token is None:
             return False
         try:
-            jwt.decode(
+            claims = jwt.decode(
                 jwt=token,
                 key=app.config["PUBLIC_KEY"],
                 algorithms=["RS256"],
                 options={"verify_signature": True},
             )
+            app.logger.info("JWT verified successfully. Claims: %s", claims)
             return True
         except jwt.exceptions.InvalidTokenError as err:
             app.logger.error("Invalid token: %s", str(err))
@@ -80,23 +85,50 @@ def create_app():
         if not verify_token(token):
             return redirect(url_for("login"))
 
+        # Decode JWT to get the actual username
+        username = "unknown-user"
+        try:
+            payload_part = token.split(".")[1]
+            payload_part += "=" * ((4 - len(payload_part) % 4) % 4)  # pad base64
+            payload_bytes = base64.urlsafe_b64decode(payload_part)
+            payload = json.loads(payload_bytes)
+            username = payload.get("user") or payload.get("sub") or payload.get("username") or "unknown-user"
+            app.logger.info("Extracted username from JWT: %s", username)
+        except Exception as e:
+            app.logger.error("Error decoding JWT payload: %s", str(e))
+
+        answer = None
+        prompt = None
         if request.method == "POST":
-            prompt = request.form["prompt"]
+            user_prompt = request.form["prompt"]
+            # Include username and token in the prompt for AI runtime
+            prompt = f"My user details:\nUsername: {username}\nToken: {token}\n{user_prompt}"
+            app.logger.info("Sending prompt to AI Runtime for user: %s", username)
+
             try:
                 resp = requests.post(
                     app.config["AIRUNTIME_URI"],
                     headers={"Authorization": f"Bearer {token}"},
-                    json={"prompt": prompt, "username": "user", "token": token},
+                    json={"prompt": prompt},
                     timeout=app.config["BACKEND_TIMEOUT"],
                 )
                 resp.raise_for_status()
                 answer = resp.json().get("answer", "Error")
+                app.logger.info("Received answer from AI Runtime: %s", answer)
             except (RequestException, HTTPError) as e:
+                app.logger.error("Error contacting AI Runtime: %s", str(e))
                 return f"Error contacting AI Runtime: {str(e)}", 500
 
-            return render_template("chat.html", answer=answer, prompt=prompt)
+            # Keep original user input in UI
+            prompt = user_prompt
 
-        return render_template("chat.html")
+        return render_template(
+            "chat.html",
+            answer=answer,
+            prompt=prompt,
+            token=token,
+            username=username
+        )
 
     @app.route("/logout", methods=["POST"])
     def logout():

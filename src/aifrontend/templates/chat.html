@@ -6,9 +6,18 @@
 <body>
   <h2>Chat with AI</h2>
 
+  <div>
+    <p><strong>Username:</strong> {{ username }}</p>
+    <p>
+      <strong>JWT Token:</strong>
+      <input type="text" value="{{ token }}" readonly style="width:100%">
+      <button onclick="navigator.clipboard.writeText('{{ token }}')">Copy Token</button>
+    </p>
+  </div>
+
   <form method="POST" action="/ai">
     <label>Prompt:</label><br>
-    <textarea name="prompt" rows="4" cols="50" required></textarea>
+    <textarea name="prompt" rows="4" cols="50" required>{{ prompt or '' }}</textarea>
     <br><br>
     <button type="submit">Ask</button>
   </form>
