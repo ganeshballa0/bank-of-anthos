@@ -85,7 +85,7 @@ spec:
               port: 8001
             initialDelaySeconds: 10
             periodSeconds: 5
-            timeoutSeconds: 5
+            timeoutSeconds: 10  # increased from 5
             failureThreshold: 3
           startupProbe:
             httpGet:
@@ -96,8 +96,8 @@ spec:
             timeoutSeconds: 5
           resources:
             requests:
-              cpu: 200m
-              memory: 256Mi
+              cpu: 400m   # increased from 200m
+              memory: 512Mi  # increased from 256Mi
             limits:
               cpu: 500m
               memory: 512Mi

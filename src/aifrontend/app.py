@@ -20,7 +20,7 @@ def create_app():
     )
     app.config["PUBLIC_KEY"] = open(os.environ["PUB_KEY_PATH"], "r").read()
     app.config["TOKEN_NAME"] = "token"
-    app.config["BACKEND_TIMEOUT"] = int(os.getenv("BACKEND_TIMEOUT", "5"))
+    app.config["BACKEND_TIMEOUT"] = int(os.getenv("BACKEND_TIMEOUT", "30"))
     app.config["SCHEME"] = os.environ.get("SCHEME", "http")
 
     # -------------------------------------------------------------------
@@ -46,6 +46,14 @@ def create_app():
     # -------------------------------------------------------------------
     # Routes
     # -------------------------------------------------------------------
+    @app.route("/", methods=["GET"])
+    def home():
+        """Home page — redirect based on JWT"""
+        token = request.cookies.get(app.config["TOKEN_NAME"])
+        if verify_token(token):
+            return redirect(url_for("chat"))
+        return redirect(url_for("login"))
+
     @app.route("/login", methods=["GET", "POST"])
     def login():
         """Authenticate user and set JWT cookie"""
@@ -110,7 +118,7 @@ def create_app():
                     app.config["AIRUNTIME_URI"],
                     headers={"Authorization": f"Bearer {token}"},
                     json={"prompt": prompt},
-                    timeout=app.config["BACKEND_TIMEOUT"],
+                    timeout=30,
                 )
                 resp.raise_for_status()
                 answer = resp.json().get("answer", "Error")
