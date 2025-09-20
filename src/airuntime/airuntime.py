@@ -33,11 +33,16 @@ MODEL_ID = "gemini-2.0-flash"
 PUBLIC_KEY = open(os.environ["PUB_KEY_PATH"], "r").read()
 PROJECT_ID = os.environ.get("PROJECT_ID", "demo-project")
 LOCATION = os.environ.get("LOCATION", "us-central1")
+
 CONTACTS_API_ADDR = os.environ.get("CONTACTS_API_ADDR", "contacts:8080")
+BALANCES_API_ADDR = os.environ.get("BALANCES_API_ADDR", "balancereader:8080")
+HISTORY_API_ADDR = os.environ.get("HISTORY_API_ADDR", "transactionhistory:8080")
+
 os.environ["GOOGLE_API_KEY"] = "AIzaSyDuu8EhcXrLt8SITFndRhMitxg41mSh_uQ" 
 
-# Construct contacts URL dynamically
 CONTACTS_URL = f"http://{CONTACTS_API_ADDR}/contacts"
+BALANCES_URL = f"http://{BALANCES_API_ADDR}/balances"
+HISTORY_URL = f"http://{HISTORY_API_ADDR}/transactions"
 
 # -------------------------------------------------------------------
 # Security
@@ -64,22 +69,47 @@ def verify_jwt(credentials: HTTPAuthorizationCredentials = Depends(bearer_scheme
 # Tools
 # -------------------------------------------------------------------
 def get_contacts(username: str, token: str) -> dict:
-    """Retrieve the contact list for a user (requires JWT token)."""
+    """Retrieve the contact list for a user."""
     logger.info("Fetching contacts for user: %s", username)
     try:
-        headers = {"Authorization": f"Bearer {token}"}
-        resp = requests.get(
-            f"{CONTACTS_URL}/{username}",
-            headers=headers,
-            timeout=10
-        )
+        resp = requests.get(f"{CONTACTS_URL}/{username}",
+                            headers={"Authorization": f"Bearer {token}"},
+                            timeout=10)
         resp.raise_for_status()
         return {"status": "success", "data": resp.json()}
     except Exception as e:
         logger.error("Error fetching contacts: %s", e)
         return {"status": "error", "error_message": str(e)}
 
+def get_balance(account_id: str, token: str) -> dict:
+    """Retrieve the account balance for a user."""
+    logger.info("Fetching balance for account: %s", account_id)
+    try:
+        resp = requests.get(f"{BALANCES_URL}/{account_id}",
+                            headers={"Authorization": f"Bearer {token}"},
+                            timeout=10)
+        resp.raise_for_status()
+        return {"status": "success", "data": resp.json()}
+    except Exception as e:
+        logger.error("Error fetching balance: %s", e)
+        return {"status": "error", "error_message": str(e)}
+
+def get_history(account_id: str, token: str) -> dict:
+    """Retrieve transaction history for a user."""
+    logger.info("Fetching history for account: %s", account_id)
+    try:
+        resp = requests.get(f"{HISTORY_URL}/{account_id}",
+                            headers={"Authorization": f"Bearer {token}"},
+                            timeout=10)
+        resp.raise_for_status()
+        return {"status": "success", "data": resp.json()}
+    except Exception as e:
+        logger.error("Error fetching history: %s", e)
+        return {"status": "error", "error_message": str(e)}
+
 contacts_tool = FunctionTool(func=get_contacts)
+balance_tool = FunctionTool(func=get_balance)
+history_tool = FunctionTool(func=get_history)
 
 # -------------------------------------------------------------------
 # Agent
@@ -90,9 +120,11 @@ bank_agent = Agent(
     instruction=(
         "You are an intelligent banking assistant.\n"
         "- Use 'get_contacts' to fetch a user’s contact list.\n"
+        "- Use 'get_balance' to fetch a user’s account balance.\n"
+        "- Use 'get_history' to fetch transaction history.\n"
         "If no tool is required, just respond naturally."
     ),
-    tools=[contacts_tool],
+    tools=[contacts_tool, balance_tool, history_tool],
 )
 
 # -------------------------------------------------------------------
@@ -111,6 +143,7 @@ def healthz():
 async def ask_ai(request: AskRequest, claims: dict = Depends(verify_jwt)):
     """Handle user queries after JWT authentication with full logging."""
     user_id = claims.get("sub") or claims.get("username") or claims.get("user") or "unknown-user"
+    account_id = claims.get("acct", "unknown-account")
     session_id = claims.get("session_id") or str(uuid.uuid4())
 
     logger.info("Received query from user: %s, session: %s", user_id, session_id)
@@ -136,6 +169,7 @@ async def ask_ai(request: AskRequest, claims: dict = Depends(verify_jwt)):
                         logger.info("Agent text part: %s", part.text)
             elif event.actions and getattr(event.actions, "escalate", False):
                 final_answer = f"Agent escalated: {getattr(event, 'error_message', 'No specific message.')}"
+
             break
 
     logger.info("Final agent response: %s", final_answer)
